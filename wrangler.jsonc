@@ -1,0 +1,11 @@
+{
+  // Plum Hop: static site on Cloudflare Workers (free static assets), served on a subdomain of al-hassan.dev.
+  // Only the contents of ./public are published.
+  "name": "plum-hop",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./public" },
+  "routes": [{ "pattern": "plumhop.al-hassan.dev", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false,
+  "send_metrics": false
+}
