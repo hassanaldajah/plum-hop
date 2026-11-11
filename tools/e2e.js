@@ -27,10 +27,10 @@ const layout=page=>page.evaluate(()=>{const q=id=>{const b=document.getElementBy
   ok('desktop: right arrow moves the ball',mid.x-x0>120,Math.round(mid.x-x0)+'px');
   ok('desktop: arrows/space do not scroll the page',mid.sy===0,'scrollY '+mid.sy);
   // high bounce: sample the peak height for a while with jump held
-  await page.keyboard.down('Space');const peak=await page.evaluate(()=>new Promise(res=>{let m=1e9,g=1e9,n=0;const f=()=>{m=Math.min(m,ball.y);g=Math.min(g,L.gy(ball.x)-ball.y);if(++n<150)requestAnimationFrame(f);else res(Math.round(landY-m));};f();}));await page.keyboard.up('Space');
-  ok('desktop: held jump gives the big bounce (~125px)',peak>105&&peak<140,peak+'px');
-  await sleep(1200);const small=await page.evaluate(()=>new Promise(res=>{let m=1e9,n=0;const f=()=>{m=Math.min(m,ball.y);if(++n<120)requestAnimationFrame(f);else res(Math.round(landY-m));};f();}));
-  ok('desktop: idle bounce is the small one (~60px)',small>45&&small<72,small+'px');
+  await sleep(1200);const y0=await page.evaluate(()=>ball.y);await page.keyboard.down('Space');const peak=await page.evaluate(y0=>new Promise(res=>{let m=1e9,n=0;const f=()=>{m=Math.min(m,ball.y);if(++n<150)requestAnimationFrame(f);else res(Math.round(y0-m));};f();}),y0);await page.keyboard.up('Space');
+  ok('desktop: held jump gives the big jump (~125px)',peak>105&&peak<140,peak+'px');
+  await sleep(1200);const small=await page.evaluate(()=>new Promise(res=>{let m=1e9,M=-1e9,n=0;const f=()=>{m=Math.min(m,ball.y);M=Math.max(M,ball.y);if(++n<120)requestAnimationFrame(f);else res(Math.round(M-m));};f();}));
+  ok('desktop: with no input the ball rests on the ground (no auto-bounce)',small<=2,small+'px');
   await page.keyboard.press('KeyP');await sleep(150);ok('desktop: P pauses',await page.evaluate(()=>state)==='pause');
   await page.keyboard.press('Escape');await sleep(150);ok('desktop: Esc resumes',await page.evaluate(()=>state)==='play');
   // save sanitising: hostile localStorage content must not break the game or reach the save object
@@ -76,7 +76,7 @@ const layout=page=>page.evaluate(()=>{const q=id=>{const b=document.getElementBy
   ok(name+': two fingers at once (right + jump)',held.r===1&&held.j===1&&held.l===0,JSON.stringify(held));
   ok(name+': lifting one finger keeps the other',afterJ.r+afterJ.j===1,JSON.stringify(afterJ));
   ok(name+': releasing stops input, ball travelled',rel.r===0&&rel.j===0&&rel.x-x0>100,Math.round(rel.x-x0)+'px');
-  ok(name+': big bounce from touch jump',peak>100,peak+'px');
+  ok(name+': big jump from touch jump',peak>100,peak+'px');
   // pause circle on the canvas
   const pz=await toPage(page,305,14);await page.touchscreen.tap(pz.x,pz.y);await sleep(200);
   ok(name+': pause button on canvas',await page.evaluate(()=>state)==='pause');

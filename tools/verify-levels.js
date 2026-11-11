@@ -1,4 +1,4 @@
-// Level verifier v2: finds a deathless run that collects every gem and reaches the goal (Go-Explore style search with save states).
+// Level verifier v3 (rolling ball, jump on press): finds a deathless run that collects every gem and reaches the goal (Go-Explore style search with save states).
 // Gems hanging over the same gap are searched as one group (they must be taken in a single flight).
 // usage: node verify2.js <index.html> [w<world>|world-level ...]
 const fs=require('fs');
@@ -10,8 +10,8 @@ const el={addEventListener:noop,classList:{add:noop,remove:noop},getContext:()=>
 const g={document:{getElementById:()=>el,addEventListener:noop,hidden:false},window:{},addEventListener:noop,requestAnimationFrame:noop,localStorage:{getItem:()=>null,setItem:noop},console:{log:console.log,warn:m=>warns.push(m)}};
 const api=new Function(...Object.keys(g),code+`;return {WORLDS,NEED,startLevel,step,inp,go,draw,
  S:()=>({state,ball,L,got,falls,T}),
- snap:()=>({b:{...ball},T,jbuf,got,falls,landY,inW,sp:{...L.spawn},mv:L.movs.map(o=>({...o})),cr:L.crs.map(o=>({...o})),gt:L.gts.map(o=>({...o})),en:L.ens.map(o=>({...o})),sw:L.sws.map(o=>o.on),cp:L.cps.map(o=>o.on),sk:L.sps.map(o=>o.k),gm:L.gems.map(o=>o.got)}),
- load:s=>{Object.assign(ball,s.b);T=s.T;jbuf=s.jbuf;got=s.got;falls=s.falls;landY=s.landY;inW=s.inW;L.spawn={...s.sp};L.movs.forEach((o,i)=>Object.assign(o,s.mv[i]));L.crs.forEach((o,i)=>Object.assign(o,s.cr[i]));L.gts.forEach((o,i)=>Object.assign(o,s.gt[i]));L.ens.forEach((o,i)=>Object.assign(o,s.en[i]));L.sws.forEach((o,i)=>o.on=s.sw[i]);L.cps.forEach((o,i)=>o.on=s.cp[i]);L.sps.forEach((o,i)=>o.k=s.sk[i]);L.gems.forEach((o,i)=>o.got=s.gm[i]);state='play';parts.length=0;}
+ snap:()=>({b:{...ball},T,jbuf,got,falls,landY,inW,sp:{...L.spawn},mv:L.movs.map(o=>({...o})),cr:L.crs.map(o=>({...o})),gt:L.gts.map(o=>({...o})),en:L.ens.map(o=>({...o})),sw:L.sws.map(o=>o.on),cp:L.cps.map(o=>o.on),sk:L.sps.map(o=>o.k),gm:L.gems.map(o=>o.got),ic:(L.ics||[]).map(o=>({...o}))}),
+ load:s=>{Object.assign(ball,s.b);T=s.T;jbuf=s.jbuf;got=s.got;falls=s.falls;landY=s.landY;inW=s.inW;L.spawn={...s.sp};L.movs.forEach((o,i)=>Object.assign(o,s.mv[i]));L.crs.forEach((o,i)=>Object.assign(o,s.cr[i]));L.gts.forEach((o,i)=>Object.assign(o,s.gt[i]));L.ens.forEach((o,i)=>Object.assign(o,s.en[i]));L.sws.forEach((o,i)=>o.on=s.sw[i]);L.cps.forEach((o,i)=>o.on=s.cp[i]);L.sps.forEach((o,i)=>o.k=s.sk[i]);L.gems.forEach((o,i)=>o.got=s.gm[i]);(L.ics||[]).forEach((o,i)=>Object.assign(o,s.ic[i]));state='play';parts.length=0;}
 };`)(...Object.values(g));
 
 function runLevel(wi,li){
@@ -40,9 +40,12 @@ function runLevel(wi,li){
    for(let m=0;m<nMac&&!dead;m++){
     const q=rnd(),t=tgt(i=>L.gems[i].got),toward=t[0]>=api.S().ball.x?'r':'l',away=toward==='r'?'l':'r';api.inp.r=0;api.inp.l=0;
     if(q<.6)api.inp[toward]=1;else if(q<.82)api.inp[away]=1;
-    api.inp.j=rnd()<.5?1:0;
-    const len=8+(rnd()*52|0);
-    for(let i=0;i<len;i++){api.step();steps++;const s=api.S();
+    const len=8+(rnd()*52|0),jm=rnd(),t0=rnd()*len|0,hd=6+(rnd()*60|0);let rel=false;
+    api.inp.j=jm<.38?0:jm<.62?1:jm<.82?0:1;
+    for(let i=0;i<len;i++){
+     if(jm>=.62&&jm<.82)api.inp.j=i>=t0&&i<t0+hd?1:0;
+     else if(jm>=.82){const bl=api.S().ball;if(bl.gnd>0&&api.inp.j&&!rel){api.inp.j=0;rel=true;}else{api.inp.j=1;rel=false;}}
+     api.step();steps++;const s=api.S();
      if(done()){const sn=api.snap();if(isGoal||viable(sn))return sn;dead=true;break;}
      if(s.state!=='play'||s.falls>f0){dead=true;break;}}
     if(!dead){if(inside(api.S().ball))tunnel++;if(add(api.snap()))dirty=true;}

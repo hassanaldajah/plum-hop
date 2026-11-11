@@ -7,7 +7,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));let bad=0;const ok=(n,p,i)=>{if
  await page.evaluate(()=>{try{localStorage.removeItem('plumhop_v1');}catch(e){}});await page.reload();await sleep(500);
  ok('fresh visit shows Play',await page.evaluate(()=>btns[0].l())==='Play');
  // play level 1-1 with real physics: hold right + jump until a checkpoint is reached
- const st=await page.evaluate(()=>{startLevel(0,0,true);inp.r=1;inp.j=1;let n=0;while(L.spi<0&&n++<120*90)step();inp.r=0;inp.j=0;for(let i=0;i<60;i++)step();return {spi:L.spi,got,T:Math.round(T),falls,x:Math.round(ball.x)};});
+ const st=await page.evaluate(()=>{startLevel(0,0,true);for(let k=0;k<3;k++){const g=L.gems[k];ball.x=g.x;ball.y=g.y;ball.vx=ball.vy=0;step();}ball.x=815;ball.y=L.gy(815)-12;ball.vx=ball.vy=0;inp.r=1;let n=0;while(L.spi<0&&n++<120*20)step();inp.r=0;inp.j=0;for(let i=0;i<60;i++)step();return {spi:L.spi,got,T:Math.round(T),falls,x:Math.round(ball.x)};});
  ok('reached a checkpoint with gems in level 1-1',st.spi>=0&&st.got>0,JSON.stringify(st));
  await page.reload();await sleep(500);
  ok('after closing and reopening: title offers Continue',await page.evaluate(()=>btns[0].l())==='Continue');

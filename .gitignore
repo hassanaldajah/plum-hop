@@ -1,2 +1,9 @@
 .wrangler/
 node_modules/
+art/out/
+art/*.txt
+art/__pycache__/
+art/renderall.sh
+art/probe.py
+art/sheet.py
+art/sprsheet.py
