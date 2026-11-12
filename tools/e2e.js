@@ -37,7 +37,7 @@ const layout=page=>page.evaluate(()=>{const q=id=>{const b=document.getElementBy
   await page.evaluate(()=>{go('title');try{localStorage.setItem('plumhop_v1',JSON.stringify({mute:'yes',lv:{'0-0':{s:99,g:'<img src=x onerror=alert(1)>',t:-5},'__proto__':{s:3},'9-9x':{s:3},'1-1':'x'}}));}catch(e){}});
   await page.reload();await sleep(600);
   const sv=await page.evaluate(()=>({save,st:state,polluted:({}).s}));
-  ok('security: hostile save data is sanitised',sv.st==='title'&&sv.save.mute===false&&sv.save.cur===null&&JSON.stringify(sv.save.lv)==='{"0-0":{"s":3,"g":0,"t":0}}'&&sv.polluted===undefined,JSON.stringify(sv.save));
+  ok('security: hostile save data is sanitised',sv.st==='title'&&sv.save.mute===false&&sv.save.cur===null&&JSON.stringify(sv.save.lv)==='{"0-0":{"s":3,"g":0,"t":1000000000}}'&&sv.polluted===undefined,JSON.stringify(sv.save));
   await page.evaluate(()=>{try{localStorage.removeItem('plumhop_v1');}catch(e){}});
   const csp=await page.evaluate(()=>window.__csp);
   ok('security: no CSP violations on desktop',csp.length===0,csp.join(' | '));
@@ -59,6 +59,7 @@ const layout=page=>page.evaluate(()=>{const q=id=>{const b=document.getElementBy
   const over=(a,b)=>a.l<b.r&&b.l<a.r&&a.t<b.b&&b.t<a.b;
   ok(name+': buttons do not cover the canvas',![lay.bl,lay.br,lay.bj].some(b=>over(b,lay.cv)));
   ok(name+': buttons are thumb sized (>=60px)',[lay.bl,lay.br,lay.bj].every(b=>b.r-b.l>=60&&b.b-b.t>=60),[lay.bl,lay.br,lay.bj].map(b=>(b.r-b.l)+'x'+(b.b-b.t)).join(' '));
+  ok(name+': buttons have >=64px hit areas (SPEC UX)',[lay.bl,lay.br,lay.bj].every(b=>b.r-b.l>=64&&b.b-b.t>=64),[lay.bl,lay.br,lay.bj].map(b=>(b.r-b.l)+'x'+(b.b-b.t)).join(' '));
   await page.screenshot({path:OUT+'e2e_'+name.replace(/\W+/g,'_')+'_title.png'});
   // tap "Play" on the canvas, then real multi-touch: hold RIGHT, add JUMP
   const cdp=await ctx.newCDPSession(page);const play=await toPage(page,160,140);
@@ -94,6 +95,49 @@ const layout=page=>page.evaluate(()=>{const q=id=>{const b=document.getElementBy
   }
   await ctx.close();
  }
+
+ /* ---------- v3 checks: save migration, tamper, reduced motion, art fallback ---------- */
+ {const {ctx,page,errs}=await open(browser,{viewport:{width:1280,height:800}});
+  const reload=async()=>{await page.reload();await sleep(600);};
+  // v2-format save (no v field, stale cur + t): stars/unlocks must load; must not throw
+  await page.evaluate(()=>localStorage.setItem('plumhop_v1',JSON.stringify({mute:true,lv:{'0-0':{s:3,g:30,t:41.5},'0-1':{s:2,g:25,t:80}},cur:{w:0,l:2,sp:0,cp:'0',gm:'0',sw:'',en:'',t:999,f:7}})));
+  await reload();
+  const v2=await page.evaluate(()=>({st:state,save:JSON.parse(JSON.stringify(save)),ul:typeof unlocked==='function'?unlocked(0,2):null}));
+  ok('save: v2-format save loads (stars, gems, mute kept)',v2.st==='title'&&v2.save.mute===true&&v2.save.lv['0-0']&&v2.save.lv['0-0'].s===3&&v2.save.lv['0-1']&&v2.save.lv['0-1'].s===2&&v2.save.lv['0-1'].g===25,JSON.stringify(v2.save));
+  ok('save: level 1-3 unlocked after v2 stars',v2.ul===true,String(v2.ul));
+  ok('save: v2 migration resets stale cur and t (SPEC threat model)',v2.save.cur===null,'cur='+JSON.stringify(v2.save.cur));
+  const tamper=['not json{{','null','[]','42','"str"','{"lv":null}','{"lv":[1,2]}','{"lv":{"0-0":{"s":"3","g":1e999,"t":"x"}}}','{"cur":{"w":99,"l":-1}}','{"cur":{"w":0,"l":0,"cp":"abc","gm":1,"sw":null,"en":{}}}','{"cur":{"w":0,"l":0,"cp":"0","gm":"0","sw":"0","en":"0","sp":1e99,"t":-1,"f":"x"}}','{"__proto__":{"polluted":1},"constructor":{"prototype":{"p2":1}}}','{"lv":{"constructor":{"s":3},"0-0":{"s":NaN}}}'];
+  const badT=[];
+  for(const t of tamper){await page.evaluate(v=>localStorage.setItem('plumhop_v1',v),t);const e0=errs.length;await reload();
+   const r=await page.evaluate(()=>{try{const sv=save;const okShape=sv&&typeof sv.mute==='boolean'&&sv.lv&&typeof sv.lv==='object';startLevel(0,0);go('title');return {st:state,okShape,pol:({}).polluted||({}).p2||null};}catch(e){return {err:e.message};}});
+   if(errs.length>e0||r.err||r.st!=='title'||!r.okShape||r.pol)badT.push(t.slice(0,40)+' => '+JSON.stringify(r)+' '+errs.slice(e0).join(';'));}
+  ok('save: '+tamper.length+' tampered saves never throw, shape stays valid',badT.length===0,badT.join(' | '));
+  await page.evaluate(()=>{try{localStorage.removeItem('plumhop_v1');}catch(e){}});
+  await ctx.close();}
+ {// prefers-reduced-motion: no shake, no flash
+  const {ctx,page,errs}=await open(browser,{viewport:{width:1280,height:800},reducedMotion:'reduce'});
+  await page.evaluate(()=>{startLevel(0,1);});await sleep(200);
+  const r=await page.evaluate(()=>{const o={rm:fxRM};fxFrame(1/60);fxShake(6,.3);let maxOff=0,maxFl=0;ball.x=L.spawn.x;ball.y=L.spawn.y;for(let i=0;i<40;i++){falls++;gt+=1/60;fxFrame(1/60);draw();step();maxOff=Math.max(maxOff,Math.abs(fxOX),Math.abs(fxOY));maxFl=Math.max(maxFl,fxFl);}o.maxOff=maxOff;o.maxFl=maxFl;o.st=fxST;return o;});
+  ok('reduced motion: matchMedia honoured (fxRM)',r.rm===true,JSON.stringify(r));
+  ok('reduced motion: shake disabled',r.maxOff===0&&r.st===0,'offset '+r.maxOff+' fxST '+r.st);
+  ok('reduced motion: death flash disabled',r.maxFl===0,'fxFl '+r.maxFl);
+  await ctx.close();}
+ {// control: without the preference the same path shakes (proves the check can fail)
+  const {ctx,page}=await open(browser,{viewport:{width:1280,height:800}});
+  const r=await page.evaluate(()=>{startLevel(0,1);fxFrame(1/60);fxShake(6,.3);let m=0;for(let i=0;i<10;i++){gt+=1/60;fxFrame(1/60);draw();m=Math.max(m,Math.abs(fxOX),Math.abs(fxOY));}return {rm:fxRM,m};});
+  ok('reduced motion control: shake runs when not requested',r.rm===false&&r.m>0,JSON.stringify(r));
+  await ctx.close();}
+ {// art/ blocked: game boots, plays and draws all levels with procedural fallback
+  const ctx=await browser.newContext({viewport:{width:1280,height:800}});const page=await ctx.newPage();const errs=[];let blocked=0;
+  page.on('pageerror',e=>errs.push(e.message));
+  await page.route(/\/art\//,r=>{blocked++;r.abort();});
+  await page.goto(URL);await sleep(900);
+  await page.keyboard.press('Enter');await sleep(300);
+  const r=await page.evaluate(()=>{const bad=[];WORLDS.forEach((w,wi)=>w.levels.forEach((d,li)=>{try{startLevel(wi,li);for(let x=20;x<L.w;x+=300){ball.x=x;ball.y=Math.min(L.gy(x),L.h)-30;landY=ball.y;camUp(0,true);draw();}}catch(e){bad.push(d.n+': '+e.message);}}));return {bad,imgs:Object.keys(ART.img).length,tiles:Object.keys(ART.tiles).length};});
+  ok('art blocked: art requests were attempted and refused',blocked>0,blocked+' requests');
+  ok('art blocked: no art loaded, all 20 levels still draw',r.imgs===0&&r.tiles===0&&r.bad.length===0,JSON.stringify(r));
+  ok('art blocked: no script errors',errs.length===0,errs.join(' | '));
+  await ctx.close();}
  await browser.close();
  const bad=results.filter(r=>!r.pass);console.log('\n'+(bad.length?('FAILED: '+bad.length+' of '+results.length):('ALL '+results.length+' CHECKS PASS')));process.exit(bad.length?1:0);
 })().catch(e=>{console.log('E2E CRASH',e);process.exit(2);});

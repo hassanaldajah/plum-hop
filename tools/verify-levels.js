@@ -11,7 +11,7 @@ const g={document:{getElementById:()=>el,addEventListener:noop,hidden:false},win
 const api=new Function(...Object.keys(g),code+`;return {WORLDS,NEED,startLevel,step,inp,go,draw,
  S:()=>({state,ball,L,got,falls,T}),
  snap:()=>({b:{...ball},T,jbuf,got,falls,landY,inW,sp:{...L.spawn},mv:L.movs.map(o=>({...o})),cr:L.crs.map(o=>({...o})),gt:L.gts.map(o=>({...o})),en:L.ens.map(o=>({...o})),sw:L.sws.map(o=>o.on),cp:L.cps.map(o=>o.on),sk:L.sps.map(o=>o.k),gm:L.gems.map(o=>o.got),ic:(L.ics||[]).map(o=>({...o}))}),
- load:s=>{Object.assign(ball,s.b);T=s.T;jbuf=s.jbuf;got=s.got;falls=s.falls;landY=s.landY;inW=s.inW;L.spawn={...s.sp};L.movs.forEach((o,i)=>Object.assign(o,s.mv[i]));L.crs.forEach((o,i)=>Object.assign(o,s.cr[i]));L.gts.forEach((o,i)=>Object.assign(o,s.gt[i]));L.ens.forEach((o,i)=>Object.assign(o,s.en[i]));L.sws.forEach((o,i)=>o.on=s.sw[i]);L.cps.forEach((o,i)=>o.on=s.cp[i]);L.sps.forEach((o,i)=>o.k=s.sk[i]);L.gems.forEach((o,i)=>o.got=s.gm[i]);(L.ics||[]).forEach((o,i)=>Object.assign(o,s.ic[i]));state='play';parts.length=0;}
+ load:s=>{Object.assign(ball,s.b);T=s.T;jbuf=s.jbuf;got=s.got;falls=s.falls;landY=s.landY;inW=s.inW;L.spawn={...s.sp};L.movs.forEach((o,i)=>Object.assign(o,s.mv[i]));L.crs.forEach((o,i)=>Object.assign(o,s.cr[i]));L.gts.forEach((o,i)=>Object.assign(o,s.gt[i]));L.ens.forEach((o,i)=>Object.assign(o,s.en[i]));L.sws.forEach((o,i)=>o.on=s.sw[i]);L.cps.forEach((o,i)=>o.on=s.cp[i]);L.sps.forEach((o,i)=>o.k=s.sk[i]);L.gems.forEach((o,i)=>o.got=s.gm[i]);(L.ics||[]).forEach((o,i)=>Object.assign(o,s.ic[i]));state='play';}
 };`)(...Object.values(g));
 
 function runLevel(wi,li){

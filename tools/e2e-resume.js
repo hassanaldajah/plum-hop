@@ -15,7 +15,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));let bad=0;const ok=(n,p,i)=>{if
  await page.touchscreen.tap(cv.x,cv.y);await sleep(300);
  const re=await page.evaluate(()=>({state,lv:L.d.n,spi:L.spi,got,T:Math.round(T),falls,x:Math.round(ball.x),cpx:L.cps[L.spi]&&L.cps[L.spi].x,flags:L.gems.filter(g=>g.got).length}));
  ok('Continue resumes same level, checkpoint, gems, time and falls',re.state==='play'&&re.lv==='First Hops'&&re.spi===st.spi&&re.got>=st.got&&re.flags===re.got&&re.falls>=st.falls&&re.T>=st.T-1&&Math.abs(re.x-re.cpx)<40,JSON.stringify(re));
- await page.evaluate(()=>{go('pause');btns[1].f();});
+ const cf=await page.evaluate(()=>{go('pause');btns[1].f();return {pcf,state,n:btns.length,sel,l:btns[sel].l,got};});
+ ok('Restart with gems asks first, default Keep playing',cf.pcf===1&&cf.state==='pause'&&cf.n===2&&cf.l==='Keep playing'&&cf.got>0,JSON.stringify(cf));
+ await page.evaluate(()=>btns[1].f());
  ok('Restart starts clean and forgets the old run',await page.evaluate(()=>got===0&&T<1&&save.cur===null));
  await page.evaluate(()=>{ball.x=L.goal.x;ball.y=L.goal.y-20;step();});
  ok('finishing a level clears the in-progress save and records the result',await page.evaluate(()=>state==='results'&&save.cur===null&&save.lv['0-0'].s>=1));
